@@ -6,20 +6,26 @@ from pyrsistent._pmap import PMap, pmap
 
 
 class _PRecordMeta(type):
-    def __new__(mcs, name, bases, dct):
+    def __new__(cls, name, bases, dct):
         set_fields(dct, bases, name='_precord_fields')
         store_invariants(dct, bases, '_precord_invariants', '__invariant__')
 
-        dct['_precord_mandatory_fields'] = \
-            set(name for name, field in dct['_precord_fields'].items() if field.mandatory)
+        dct['_precord_mandatory_fields'] = {
+            name
+            for name, field in dct['_precord_fields'].items()
+            if field.mandatory
+        }
 
-        dct['_precord_initial_values'] = \
-            dict((k, field.initial) for k, field in dct['_precord_fields'].items() if field.initial is not PFIELD_NO_INITIAL)
+        dct['_precord_initial_values'] = {
+            k: field.initial
+            for k, field in dct['_precord_fields'].items()
+            if field.initial is not PFIELD_NO_INITIAL
+        }
 
 
         dct['__slots__'] = ()
 
-        return super(_PRecordMeta, mcs).__new__(mcs, name, bases, dct)
+        return super(_PRecordMeta, cls).__new__(cls, name, bases, dct)
 
 
 class PRecord(PMap, CheckedType, metaclass=_PRecordMeta):
@@ -42,10 +48,10 @@ class PRecord(PMap, CheckedType, metaclass=_PRecordMeta):
 
         initial_values = kwargs
         if cls._precord_initial_values:
-            initial_values = dict((k, v() if callable(v) else v)
-                                  for k, v in cls._precord_initial_values.items())
-            initial_values.update(kwargs)
-
+            initial_values = {
+                k: v() if callable(v) else v
+                for k, v in cls._precord_initial_values.items()
+            } | kwargs
         e = _PRecordEvolver(cls, pmap(pre_size=len(cls._precord_fields)), _factory_fields=factory_fields, _ignore_extra=ignore_extra)
         for k, v in initial_values.items():
             e[k] = v
@@ -102,7 +108,10 @@ class PRecord(PMap, CheckedType, metaclass=_PRecordMeta):
         Serialize the current PRecord using custom serializer functions for fields where
         such have been supplied.
         """
-        return dict((k, serialize(self._precord_fields[k].serializer, format, v)) for k, v in self.items())
+        return {
+            k: serialize(self._precord_fields[k].serializer, format, v)
+            for k, v in self.items()
+        }
 
 
 class _PRecordEvolver(PMap._Evolver):
@@ -120,30 +129,28 @@ class _PRecordEvolver(PMap._Evolver):
         self.set(key, original_value)
 
     def set(self, key, original_value):
-        field = self._destination_cls._precord_fields.get(key)
-        if field:
-            if self._factory_fields is None or field in self._factory_fields:
-                try:
-                    if is_field_ignore_extra_complaint(PRecord, field, self._ignore_extra):
-                        value = field.factory(original_value, ignore_extra=self._ignore_extra)
-                    else:
-                        value = field.factory(original_value)
-                except InvariantException as e:
-                    self._invariant_error_codes += e.invariant_errors
-                    self._missing_fields += e.missing_fields
-                    return self
-            else:
-                value = original_value
-
-            check_type(self._destination_cls, field, key, value)
-
-            is_ok, error_code = field.invariant(value)
-            if not is_ok:
-                self._invariant_error_codes.append(error_code)
-
-            return super(_PRecordEvolver, self).set(key, value)
-        else:
+        if not (field := self._destination_cls._precord_fields.get(key)):
             raise AttributeError("'{0}' is not among the specified fields for {1}".format(key, self._destination_cls.__name__))
+        if self._factory_fields is None or field in self._factory_fields:
+            try:
+                if is_field_ignore_extra_complaint(PRecord, field, self._ignore_extra):
+                    value = field.factory(original_value, ignore_extra=self._ignore_extra)
+                else:
+                    value = field.factory(original_value)
+            except InvariantException as e:
+                self._invariant_error_codes += e.invariant_errors
+                self._missing_fields += e.missing_fields
+                return self
+        else:
+            value = original_value
+
+        check_type(self._destination_cls, field, key, value)
+
+        is_ok, error_code = field.invariant(value)
+        if not is_ok:
+            self._invariant_error_codes.append(error_code)
+
+        return super(_PRecordEvolver, self).set(key, value)
 
     def persistent(self):
         cls = self._destination_cls

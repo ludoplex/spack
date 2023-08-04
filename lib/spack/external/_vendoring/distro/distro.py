@@ -849,10 +849,7 @@ class LinuxDistribution:
             return normalize(distro_id, NORMALIZED_DISTRO_ID)
 
         distro_id = self.uname_attr("id")
-        if distro_id:
-            return normalize(distro_id, NORMALIZED_DISTRO_ID)
-
-        return ""
+        return normalize(distro_id, NORMALIZED_DISTRO_ID) if distro_id else ""
 
     def name(self, pretty: bool = False) -> str:
         """
@@ -872,8 +869,7 @@ class LinuxDistribution:
             )
             if not name:
                 name = self.distro_release_attr("name") or self.uname_attr("name")
-                version = self.version(pretty=True)
-                if version:
+                if version := self.version(pretty=True):
                     name = f"{name} {version}"
         return name or ""
 
@@ -902,19 +898,13 @@ class LinuxDistribution:
             # On Debian-like, add debian_version file content to candidates list.
             versions.append(self._debian_version)
         version = ""
-        if best:
-            # This algorithm uses the last version in priority order that has
-            # the best precision. If the versions are not in conflict, that
-            # does not matter; otherwise, using the last one instead of the
-            # first one might be considered a surprise.
-            for v in versions:
+        for v in versions:
+            if best:
                 if v.count(".") > version.count(".") or version == "":
                     version = v
-        else:
-            for v in versions:
-                if v != "":
-                    version = v
-                    break
+            elif v != "":
+                version = v
+                break
         if pretty and version and self.codename():
             version = f"{version} ({self.codename()})"
         return version
@@ -926,11 +916,9 @@ class LinuxDistribution:
 
         For details, see :func:`distro.version_parts`.
         """
-        version_str = self.version(best=best)
-        if version_str:
+        if version_str := self.version(best=best):
             version_regex = re.compile(r"(\d+)\.?(\d+)?\.?(\d+)?")
-            matches = version_regex.match(version_str)
-            if matches:
+            if matches := version_regex.match(version_str):
                 major, minor, build_number = matches.groups()
                 return major, minor or "", build_number or ""
         return "", "", ""
@@ -1128,10 +1116,8 @@ class LinuxDistribution:
                 props[k.lower()] = v
 
         if "version" in props:
-            # extract release codename (if any) from version attribute
-            match = re.search(r"\((\D+)\)|,\s*(\D+)", props["version"])
-            if match:
-                release_codename = match.group(1) or match.group(2)
+            if match := re.search(r"\((\D+)\)|,\s*(\D+)", props["version"]):
+                release_codename = match[1] or match[2]
                 props["codename"] = props["release_codename"] = release_codename
 
         if "version_codename" in props:
@@ -1186,7 +1172,7 @@ class LinuxDistribution:
                 # Ignore lines without colon.
                 continue
             k, v = kv
-            props.update({k.replace(" ", "_").lower(): v.strip()})
+            props[k.replace(" ", "_").lower()] = v.strip()
         return props
 
     @cached_property
@@ -1226,8 +1212,7 @@ class LinuxDistribution:
         if not lines:
             return {}
         props = {}
-        match = re.search(r"^([^\s]+)\s+([\d\.]+)", lines[0].strip())
-        if match:
+        if match := re.search(r"^([^\s]+)\s+([\d\.]+)", lines[0].strip()):
             name, version = match.groups()
 
             # This is to prevent the Linux kernel version from

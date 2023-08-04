@@ -25,8 +25,6 @@ from ruamel.yaml.error import YAMLError, FileMark, StringMark, YAMLStreamError
 from ruamel.yaml.compat import _F  # NOQA
 from ruamel.yaml.util import RegExp
 
-if False:  # MYPY
-    from typing import Any, Dict, Optional, List, Union, Text, Tuple, Optional  # NOQA
 #    from ruamel.yaml.compat import StreamTextType  # NOQA
 
 __all__ = ['Reader', 'ReaderError']
@@ -223,9 +221,7 @@ class Reader:
     def _get_non_printable_regex(cls, data):
         # type: (Text) -> Optional[Tuple[int, Text]]
         match = cls.NON_PRINTABLE.search(data)
-        if not bool(match):
-            return None
-        return match.start(), match.group()
+        return None if not bool(match) else (match.start(), match.group())
 
     @classmethod
     def _get_non_printable(cls, data):
@@ -264,8 +260,6 @@ class Reader:
                 except UnicodeDecodeError as exc:
                     character = self.raw_buffer[exc.start]
                     if self.stream is not None:
-                        position = self.stream_pointer - len(self.raw_buffer) + exc.start
-                    elif self.stream is not None:
                         position = self.stream_pointer - len(self.raw_buffer) + exc.start
                     else:
                         position = exc.start

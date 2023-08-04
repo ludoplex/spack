@@ -730,11 +730,7 @@ def extract_from_ast(
             if not out:
                 continue
         else:
-            if len(strings) == 1:
-                out = strings[0]
-            else:
-                out = tuple(strings)
-
+            out = strings[0] if len(strings) == 1 else tuple(strings)
         yield node.lineno, node.node.name, out
 
 

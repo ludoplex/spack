@@ -329,7 +329,9 @@ class PDeque(object):
             return result
 
         if not isinstance(index, Integral):
-            raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+            raise TypeError(
+                f"'{type(index).__name__}' object cannot be interpreted as an index"
+            )
 
         if index >= 0:
             return self.popleft(index).left
@@ -361,7 +363,7 @@ def pdeque(iterable=(), maxlen=None):
     if maxlen is not None:
         t = t[-maxlen:]
     length = len(t)
-    pivot = int(length / 2)
+    pivot = length // 2
     left = plist(t[:pivot])
     right = plist(t[pivot:], reverse=True)
     return PDeque(left, right, length, maxlen)

@@ -1,8 +1,5 @@
 # coding: utf-8
 
-if False:  # MYPY
-    from typing import Dict, Any  # NOQA
-
 _package_data = dict(
     full_package_name='ruamel.yaml',
     version_info=(0, 17, 21),

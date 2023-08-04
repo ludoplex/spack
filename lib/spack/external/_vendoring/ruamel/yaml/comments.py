@@ -6,6 +6,7 @@ these are not really related, formatting could be factored out as
 a separate base
 """
 
+
 import sys
 import copy
 
@@ -16,9 +17,6 @@ from ruamel.yaml.scalarstring import ScalarString
 from ruamel.yaml.anchor import Anchor
 
 from collections.abc import MutableSet, Sized, Set, Mapping
-
-if False:  # MYPY
-    from typing import Any, Dict, Optional, List, Union, Optional, Iterator  # NOQA
 
 # fmt: off
 __all__ = ['CommentedSeq', 'CommentedKeySeq',
@@ -105,24 +103,21 @@ class Comment:
 
     def __str__(self):
         # type: () -> str
-        if bool(self._post):
-            end = ',\n  end=' + str(self._post)
-        else:
-            end = ""
+        end = ',\n  end=' + str(self._post) if bool(self._post) else ""
         return 'Comment(comment={0},\n  items={1}{2})'.format(self.comment, self._items, end)
 
     def _old__repr__(self):
         # type: () -> str
-        if bool(self._post):
-            end = ',\n  end=' + str(self._post)
-        else:
-            end = ""
+        end = ',\n  end=' + str(self._post) if bool(self._post) else ""
         try:
-            ln = max([len(str(k)) for k in self._items]) + 1
+            ln = max(len(str(k)) for k in self._items) + 1
         except ValueError:
             ln = ''  # type: ignore
         it = '    '.join(
-            ['{:{}} {}\n'.format(str(k) + ':', ln, v) for k, v in self._items.items()]
+            [
+                '{:{}} {}\n'.format(f'{str(k)}:', ln, v)
+                for k, v in self._items.items()
+            ]
         )
         if it:
             it = '\n    ' + it + '  '
@@ -132,16 +127,16 @@ class Comment:
         # type: () -> str
         if self._pre is None:
             return self._old__repr__()
-        if bool(self._post):
-            end = ',\n  end=' + repr(self._post)
-        else:
-            end = ""
+        end = ',\n  end=' + repr(self._post) if bool(self._post) else ""
         try:
-            ln = max([len(str(k)) for k in self._items]) + 1
+            ln = max(len(str(k)) for k in self._items) + 1
         except ValueError:
             ln = ''  # type: ignore
         it = '    '.join(
-            ['{:{}} {}\n'.format(str(k) + ':', ln, v) for k, v in self._items.items()]
+            [
+                '{:{}} {}\n'.format(f'{str(k)}:', ln, v)
+                for k, v in self._items.items()
+            ]
         )
         if it:
             it = '\n    ' + it + '  '
@@ -175,9 +170,7 @@ class Comment:
     def get(self, item, pos):
         # type: (Any, Any) -> Any
         x = self._items.get(item)
-        if x is None or len(x) < pos:
-            return None
-        return x[pos]  # can be None
+        return None if x is None or len(x) < pos else x[pos]
 
     def set(self, item, pos, value):
         # type: (Any, Any, Any) -> Any
@@ -241,9 +234,7 @@ class Format:
         the object explicitly will be taken. If that is None as well the
         default flow style rules the format down the line, or the type
         of the constituent values (simple -> flow, map/list -> block)"""
-        if self._flow_style is None:
-            return default
-        return self._flow_style
+        return default if self._flow_style is None else self._flow_style
 
 
 class LineCol:
@@ -282,9 +273,7 @@ class LineCol:
 
     def item(self, idx):
         # type: (Any) -> Any
-        if self.data is None:
-            return None
-        return self.data[idx][0], self.data[idx][1]
+        return None if self.data is None else (self.data[idx][0], self.data[idx][1])
 
     def add_idx_line_col(self, key, data):
         # type: (Any, Any) -> None
@@ -365,7 +354,7 @@ class CommentedBase:
         for com in comment.split('\n'):
             c = com.strip()
             if len(c) > 0 and c[0] != '#':
-                com = '# ' + com
+                com = f'# {com}'
             pre_comments.append(CommentToken(com + '\n', start_mark))
 
     def yaml_set_comment_before_after_key(
@@ -432,10 +421,10 @@ class CommentedBase:
             except AttributeError:
                 column = 0
         if comment[0] != '#':
-            comment = '# ' + comment
+            comment = f'# {comment}'
         if column is None:
             if comment[0] == '#':
-                comment = ' ' + comment
+                comment = f' {comment}'
                 column = 0
         start_mark = CommentMark(column)
         ct = [CommentToken(comment, start_mark), None]
@@ -470,9 +459,7 @@ class CommentedBase:
 
     def yaml_anchor(self):
         # type: () -> Any
-        if not hasattr(self, Anchor.attrib):
-            return None
-        return self.anchor
+        return None if not hasattr(self, Anchor.attrib) else self.anchor
 
     def yaml_set_anchor(self, value, always_dump=False):
         # type: (Any, bool) -> None
@@ -584,8 +571,6 @@ class CommentedSeq(MutableSliceableSequence, list, CommentedBase):  # type: igno
         return self.ca.items[key][0].start_mark.column
 
     def _yaml_get_column(self, key):
-        # type: (Any) -> Any
-        column = None
         sel_idx = None
         pre, post = key - 1, key + 1
         if pre in self.ca.items:
@@ -600,9 +585,7 @@ class CommentedSeq(MutableSliceableSequence, list, CommentedBase):  # type: igno
                 if row_idx not in self.ca.items:
                     continue
                 sel_idx = row_idx
-        if sel_idx is not None:
-            column = self._yaml_get_columnX(sel_idx)
-        return column
+        return self._yaml_get_columnX(sel_idx) if sel_idx is not None else None
 
     def _yaml_get_pre_comment(self):
         # type: () -> Any
@@ -676,8 +659,6 @@ class CommentedKeySeq(tuple, CommentedBase):  # type: ignore
         return self.ca.items[key][0].start_mark.column
 
     def _yaml_get_column(self, key):
-        # type: (Any) -> Any
-        column = None
         sel_idx = None
         pre, post = key - 1, key + 1
         if pre in self.ca.items:
@@ -692,9 +673,7 @@ class CommentedKeySeq(tuple, CommentedBase):  # type: ignore
                 if row_idx not in self.ca.items:
                     continue
                 sel_idx = row_idx
-        if sel_idx is not None:
-            column = self._yaml_get_columnX(sel_idx)
-        return column
+        return self._yaml_get_columnX(sel_idx) if sel_idx is not None else None
 
     def _yaml_get_pre_comment(self):
         # type: () -> Any
@@ -723,16 +702,14 @@ class CommentedMapView(Sized):
         self._mapping = mapping
 
     def __len__(self):
-        # type: () -> int
-        count = len(self._mapping)
-        return count
+        return len(self._mapping)
 
 
 class CommentedMapKeysView(CommentedMapView, Set):  # type: ignore
     __slots__ = ()
 
     @classmethod
-    def _from_iterable(self, it):
+    def _from_iterable(cls, it):
         # type: (Any) -> Any
         return set(it)
 
@@ -743,15 +720,14 @@ class CommentedMapKeysView(CommentedMapView, Set):  # type: ignore
     def __iter__(self):
         # type: () -> Any  # yield from self._mapping  # not in py27, pypy
         # for x in self._mapping._keys():
-        for x in self._mapping:
-            yield x
+        yield from self._mapping
 
 
 class CommentedMapItemsView(CommentedMapView, Set):  # type: ignore
     __slots__ = ()
 
     @classmethod
-    def _from_iterable(self, it):
+    def _from_iterable(cls, it):
         # type: (Any) -> Any
         return set(it)
 
@@ -775,11 +751,7 @@ class CommentedMapValuesView(CommentedMapView):
     __slots__ = ()
 
     def __contains__(self, value):
-        # type: (Any) -> Any
-        for key in self._mapping:
-            if value == self._mapping[key]:
-                return True
-        return False
+        return any(value == self._mapping[key] for key in self._mapping)
 
     def __iter__(self):
         # type: () -> Any
@@ -817,8 +789,6 @@ class CommentedMap(ordereddict, CommentedBase):
         return self.ca.items[key][2].start_mark.column
 
     def _yaml_get_column(self, key):
-        # type: (Any) -> Any
-        column = None
         sel_idx = None
         pre, post, last = None, None, None
         for x in self:
@@ -840,9 +810,7 @@ class CommentedMap(ordereddict, CommentedBase):
                 if k1 not in self.ca.items:
                     continue
                 sel_idx = k1
-        if sel_idx is not None:
-            column = self._yaml_get_columnX(sel_idx)
-        return column
+        return self._yaml_get_columnX(sel_idx) if sel_idx is not None else None
 
     def _yaml_get_pre_comment(self):
         # type: () -> Any
@@ -946,9 +914,7 @@ class CommentedMap(ordereddict, CommentedBase):
 
     def _unmerged_contains(self, key):
         # type: (Any) -> Any
-        if key in self._ok:
-            return True
-        return None
+        return True if key in self._ok else None
 
     def __contains__(self, key):
         # type: (Any) -> bool
@@ -993,13 +959,11 @@ class CommentedMap(ordereddict, CommentedBase):
 
     def __iter__(self):
         # type: () -> Any
-        for x in ordereddict.__iter__(self):
-            yield x
+        yield from ordereddict.__iter__(self)
 
     def _keys(self):
         # type: () -> Any
-        for x in ordereddict.__iter__(self):
-            yield x
+        yield from ordereddict.__iter__(self)
 
     def __len__(self):
         # type: () -> int
@@ -1007,7 +971,7 @@ class CommentedMap(ordereddict, CommentedBase):
 
     def __eq__(self, other):
         # type: (Any) -> bool
-        return bool(dict(self) == other)
+        return dict(self) == other
 
     def keys(self):
         # type: () -> Any
@@ -1080,7 +1044,7 @@ class CommentedMap(ordereddict, CommentedBase):
 @classmethod  # type: ignore
 def raise_immutable(cls, *args, **kwargs):
     # type: (Any, *Any, **Any) -> None
-    raise TypeError('{} objects are immutable'.format(cls.__name__))
+    raise TypeError(f'{cls.__name__} objects are immutable')
 
 
 class CommentedKeyMap(CommentedBase, Mapping):  # type: ignore
@@ -1105,8 +1069,7 @@ class CommentedKeyMap(CommentedBase, Mapping):  # type: ignore
 
     def __iter__(self):
         # type: () -> Iterator[Any]
-        for x in self._od.__iter__():
-            yield x
+        yield from self._od.__iter__()
 
     def __len__(self):
         # type: () -> int
@@ -1120,12 +1083,12 @@ class CommentedKeyMap(CommentedBase, Mapping):  # type: ignore
         # type: () -> Any
         if not hasattr(self, merge_attrib):
             return self._od.__repr__()
-        return 'ordereddict(' + repr(list(self._od.items())) + ')'
+        return f'ordereddict({repr(list(self._od.items()))})'
 
     @classmethod
-    def fromkeys(keys, v=None):
+    def fromkeys(cls, v=None):
         # type: (Any, Any) -> Any
-        return CommentedKeyMap(dict.fromkeys(keys, v))
+        return CommentedKeyMap(dict.fromkeys(cls, v))
 
     def _yaml_add_comment(self, comment, key=NoComment):
         # type: (Any, Optional[Any]) -> None
@@ -1143,8 +1106,6 @@ class CommentedKeyMap(CommentedBase, Mapping):  # type: ignore
         return self.ca.items[key][0].start_mark.column
 
     def _yaml_get_column(self, key):
-        # type: (Any) -> Any
-        column = None
         sel_idx = None
         pre, post = key - 1, key + 1
         if pre in self.ca.items:
@@ -1159,9 +1120,7 @@ class CommentedKeyMap(CommentedBase, Mapping):  # type: ignore
                 if row_idx not in self.ca.items:
                     continue
                 sel_idx = row_idx
-        if sel_idx is not None:
-            column = self._yaml_get_columnX(sel_idx)
-        return column
+        return self._yaml_get_columnX(sel_idx) if sel_idx is not None else None
 
     def _yaml_get_pre_comment(self):
         # type: () -> Any
@@ -1219,8 +1178,7 @@ class CommentedSet(MutableSet, CommentedBase):  # type: ignore  # NOQA
 
     def __iter__(self):
         # type: () -> Any
-        for x in self.odict:
-            yield x
+        yield from self.odict
 
     def __len__(self):
         # type: () -> int
@@ -1253,13 +1211,13 @@ def dump_comments(d, name="", sep='.', out=sys.stdout):
     """
     if isinstance(d, dict) and hasattr(d, 'ca'):
         if name:
-            out.write('{} {}\n'.format(name, type(d)))
+            out.write(f'{name} {type(d)}\n')
         out.write('{!r}\n'.format(d.ca))  # type: ignore
         for k in d:
             dump_comments(d[k], name=(name + sep + str(k)) if name else k, sep=sep, out=out)
     elif isinstance(d, list) and hasattr(d, 'ca'):
         if name:
-            out.write('{} {}\n'.format(name, type(d)))
+            out.write(f'{name} {type(d)}\n')
         out.write('{!r}\n'.format(d.ca))  # type: ignore
         for idx, k in enumerate(d):
             dump_comments(

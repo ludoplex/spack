@@ -47,7 +47,7 @@ class Suite(object):
             [sys.executable, jsonschema_suite.path, "remotes"],
         )
         return {
-            "http://localhost:1234/" + name: schema
+            f"http://localhost:1234/{name}": schema
             for name, schema in json.loads(remotes.decode("utf-8")).items()
         }
 
@@ -101,19 +101,15 @@ class Version(object):
         )
 
     def tests_of(self, name):
-        return self._tests_in(
-            subject=name,
-            path=self._path.child(name + ".json"),
-        )
+        return self._tests_in(subject=name, path=self._path.child(f"{name}.json"))
 
     def optional_tests_of(self, name):
         return self._tests_in(
-            subject=name,
-            path=self._path.descendant(["optional", name + ".json"]),
+            subject=name, path=self._path.descendant(["optional", f"{name}.json"])
         )
 
     def to_unittest_testcase(self, *suites, **kwargs):
-        name = kwargs.pop("name", "Test" + self.name.title())
+        name = kwargs.pop("name", f"Test{self.name.title()}")
         methods = {
             test.method_name: test.to_unittest_method(**kwargs)
             for suite in suites
@@ -163,7 +159,7 @@ class _Test(object):
     _remotes = attr.ib()
 
     def __repr__(self):  # pragma: no cover
-        return "<Test {}>".format(self.fully_qualified_name)
+        return f"<Test {self.fully_qualified_name}>"
 
     @property
     def fully_qualified_name(self):  # pragma: no cover
@@ -179,11 +175,7 @@ class _Test(object):
     @property
     def method_name(self):
         delimiters = r"[\W\- ]+"
-        name = "test_%s_%s_%s" % (
-            re.sub(delimiters, "_", self.subject),
-            re.sub(delimiters, "_", self.case_description),
-            re.sub(delimiters, "_", self.description),
-        )
+        name = f'test_{re.sub(delimiters, "_", self.subject)}_{re.sub(delimiters, "_", self.case_description)}_{re.sub(delimiters, "_", self.description)}'
 
         if not PY3:  # pragma: no cover
             name = name.encode("utf-8")

@@ -50,7 +50,7 @@ def immutable(members='', name='Immutable', verbose=False):
         members = members.replace(',', ' ').split()
 
     def frozen_member_test():
-        frozen_members = ["'%s'" % f for f in members if f.endswith('_')]
+        frozen_members = [f"'{f}'" for f in members if f.endswith('_')]
         if frozen_members:
             return """
         frozen_fields = fields_to_modify & set([{frozen_members}])
@@ -65,7 +65,7 @@ def immutable(members='', name='Immutable', verbose=False):
         # Verbose is no longer supported in Python 3.7
         verbose_string = ", verbose={verbose}".format(verbose=verbose)
 
-    quoted_members = ', '.join("'%s'" % m for m in members)
+    quoted_members = ', '.join(f"'{m}'" for m in members)
     template = """
 class {class_name}(namedtuple('ImmutableBase', [{quoted_members}]{verbose_string})):
     __slots__ = tuple()
@@ -84,11 +84,13 @@ class {class_name}(namedtuple('ImmutableBase', [{quoted_members}]{verbose_string
         {frozen_member_test}
 
         return self.__class__.__new__(self.__class__, *map(kwargs.pop, [{quoted_members}], self))
-""".format(quoted_members=quoted_members,
-               member_set="set([%s])" % quoted_members if quoted_members else 'set()',
-               frozen_member_test=frozen_member_test(),
-               verbose_string=verbose_string,
-               class_name=name)
+""".format(
+        quoted_members=quoted_members,
+        member_set=f"set([{quoted_members}])" if quoted_members else 'set()',
+        frozen_member_test=frozen_member_test(),
+        verbose_string=verbose_string,
+        class_name=name,
+    )
 
     if verbose:
         print(template)

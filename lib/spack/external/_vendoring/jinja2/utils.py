@@ -177,8 +177,6 @@ def is_undefined(obj: t.Any) -> bool:
 
 def consume(iterable: t.Iterable[t.Any]) -> None:
     """Consumes an iterable without doing anything with it."""
-    for _ in iterable:
-        pass
 
 
 def clear_caches() -> None:
@@ -222,10 +220,7 @@ def open_if_exists(filename: str, mode: str = "rb") -> t.Optional[t.IO]:
     """Returns a file descriptor for the filename if that file exists,
     otherwise ``None``.
     """
-    if not os.path.isfile(filename):
-        return None
-
-    return open(filename, mode)
+    return None if not os.path.isfile(filename) else open(filename, mode)
 
 
 def object_type_repr(obj: t.Any) -> str:
@@ -325,10 +320,7 @@ def urlize(
     if trim_url_limit is not None:
 
         def trim_url(x: str) -> str:
-            if len(x) > trim_url_limit:  # type: ignore
-                return f"{x[:trim_url_limit]}..."
-
-            return x
+            return f"{x[:trim_url_limit]}..." if len(x) > trim_url_limit else x
 
     else:
 
@@ -447,7 +439,7 @@ def generate_lorem_ipsum(
         p_str = " ".join(p)
 
         if p_str.endswith(","):
-            p_str = p_str[:-1] + "."
+            p_str = f"{p_str[:-1]}."
         elif not p_str.endswith("."):
             p_str += "."
 
@@ -694,9 +686,7 @@ def select_autoescape(
         template_name = template_name.lower()
         if template_name.endswith(enabled_patterns):
             return True
-        if template_name.endswith(disabled_patterns):
-            return False
-        return default
+        return False if template_name.endswith(disabled_patterns) else default
 
     return autoescape
 
@@ -788,9 +778,8 @@ class Cycler:
         """Return the current item, then advance :attr:`current` to the
         next item.
         """
-        rv = self.current
         self.pos = (self.pos + 1) % len(self.items)
-        return rv
+        return self.current
 
     __next__ = next
 

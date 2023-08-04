@@ -82,16 +82,12 @@ from ruamel.yaml.scanner import BlankLineComment
 from ruamel.yaml.comments import C_PRE, C_POST, C_SPLIT_ON_FIRST_BLANK
 from ruamel.yaml.compat import _F, nprint, nprintf  # NOQA
 
-if False:  # MYPY
-    from typing import Any, Dict, Optional, List, Optional  # NOQA
-
 __all__ = ['Parser', 'RoundTripParser', 'ParserError']
 
 
 def xprintf(*args, **kw):
     # type: (Any, Any) -> Any
     return nprintf(*args, **kw)
-    pass
 
 
 class ParserError(MarkedYAMLError):
@@ -191,22 +187,18 @@ class Parser:
         return event
 
     def parse_implicit_document_start(self):
-        # type: () -> Any
-        # Parse an implicit document.
-        if not self.scanner.check_token(DirectiveToken, DocumentStartToken, StreamEndToken):
-            self.tag_handles = self.DEFAULT_TAGS
-            token = self.scanner.peek_token()
-            start_mark = end_mark = token.start_mark
-            event = DocumentStartEvent(start_mark, end_mark, explicit=False)
-
-            # Prepare the next state.
-            self.states.append(self.parse_document_end)
-            self.state = self.parse_block_node
-
-            return event
-
-        else:
+        if self.scanner.check_token(DirectiveToken, DocumentStartToken, StreamEndToken):
             return self.parse_document_start()
+        self.tag_handles = self.DEFAULT_TAGS
+        token = self.scanner.peek_token()
+        start_mark = end_mark = token.start_mark
+        event = DocumentStartEvent(start_mark, end_mark, explicit=False)
+
+        # Prepare the next state.
+        self.states.append(self.parse_document_end)
+        self.state = self.parse_block_node
+
+        return event
 
     def parse_document_start(self):
         # type: () -> Any
@@ -268,15 +260,13 @@ class Parser:
         return event
 
     def parse_document_content(self):
-        # type: () -> Any
-        if self.scanner.check_token(
+        if not self.scanner.check_token(
             DirectiveToken, DocumentStartToken, DocumentEndToken, StreamEndToken
         ):
-            event = self.process_empty_scalar(self.scanner.peek_token().start_mark)
-            self.state = self.states.pop()
-            return event
-        else:
             return self.parse_block_node()
+        event = self.process_empty_scalar(self.scanner.peek_token().start_mark)
+        self.state = self.states.pop()
+        return event
 
     def process_directives(self):
         # type: () -> Any
@@ -389,17 +379,17 @@ class Parser:
                 anchor = token.value
         if tag is not None:
             handle, suffix = tag
-            if handle is not None:
-                if handle not in self.tag_handles:
-                    raise ParserError(
-                        'while parsing a node',
-                        start_mark,
-                        _F('found undefined tag handle {handle!r}', handle=handle),
-                        tag_mark,
-                    )
-                tag = self.transform_tag(handle, suffix)
-            else:
+            if handle is None:
                 tag = suffix
+            elif handle not in self.tag_handles:
+                raise ParserError(
+                    'while parsing a node',
+                    start_mark,
+                    _F('found undefined tag handle {handle!r}', handle=handle),
+                    tag_mark,
+                )
+            else:
+                tag = self.transform_tag(handle, suffix)
         # if tag == '!':
         #     raise ParserError("while parsing a node", start_mark,
         #             "found non-specific tag '!'", tag_mark,
@@ -412,12 +402,12 @@ class Parser:
         if indentless_sequence and self.scanner.check_token(BlockEntryToken):
             comment = None
             pt = self.scanner.peek_token()
-            if self.loader and self.loader.comment_handling is None:
-                if pt.comment and pt.comment[0]:
-                    comment = [pt.comment[0], []]
-                    pt.comment[0] = None
-            elif self.loader:
-                if pt.comment:
+            if self.loader:
+                if self.loader.comment_handling is None:
+                    if pt.comment and pt.comment[0]:
+                        comment = [pt.comment[0], []]
+                        pt.comment[0] = None
+                elif pt.comment:
                     comment = pt.comment
             end_mark = self.scanner.peek_token().end_mark
             event = SequenceStartEvent(
@@ -501,10 +491,7 @@ class Parser:
             event = ScalarEvent(anchor, tag, (implicit, False), "", start_mark, end_mark)
             self.state = self.states.pop()
         else:
-            if block:
-                node = 'block'
-            else:
-                node = 'flow'
+            node = 'block' if block else 'flow'
             token = self.scanner.peek_token()
             raise ParserError(
                 _F('while parsing a {node!s} node', node=node),
@@ -629,10 +616,8 @@ class Parser:
             # value token might have post comment move it to e.g. block
             if self.scanner.check_token(ValueToken):
                 self.move_token_comment(token)
-            else:
-                if not self.scanner.check_token(KeyToken):
-                    self.move_token_comment(token, empty=True)
-                # else: empty value for this key cannot move token.comment
+            elif not self.scanner.check_token(KeyToken):
+                self.move_token_comment(token, empty=True)
             if not self.scanner.check_token(KeyToken, ValueToken, BlockEndToken):
                 self.states.append(self.parse_block_mapping_key)
                 return self.parse_block_node_or_indentless_sequence()

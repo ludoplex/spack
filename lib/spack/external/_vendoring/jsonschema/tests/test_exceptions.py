@@ -288,14 +288,16 @@ class TestErrorTree(TestCase):
 
 class TestErrorInitReprStr(TestCase):
     def make_error(self, **kwargs):
-        defaults = dict(
-            message=u"hello",
-            validator=u"type",
-            validator_value=u"string",
-            instance=5,
-            schema={u"type": u"string"},
+        defaults = (
+            dict(
+                message=u"hello",
+                validator=u"type",
+                validator_value=u"string",
+                instance=5,
+                schema={u"type": u"string"},
+            )
+            | kwargs
         )
-        defaults.update(kwargs)
         return exceptions.ValidationError(**defaults)
 
     def assertShows(self, expected, **kwargs):
@@ -458,5 +460,5 @@ class TestErrorInitReprStr(TestCase):
 
 class TestHashable(TestCase):
     def test_hashable(self):
-        set([exceptions.ValidationError("")])
-        set([exceptions.SchemaError("")])
+        {exceptions.ValidationError("")}
+        {exceptions.SchemaError("")}

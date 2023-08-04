@@ -5,10 +5,6 @@ import textwrap
 
 from ruamel.yaml.compat import _F
 
-if False:  # MYPY
-    from typing import Any, Dict, Optional, List, Text  # NOQA
-
-
 __all__ = [
     'FileMark',
     'StringMark',
@@ -33,22 +29,18 @@ class StreamMark:
         self.column = column
 
     def __str__(self):
-        # type: () -> Any
-        where = _F(
+        return _F(
             '  in "{sname!s}", line {sline1:d}, column {scolumn1:d}',
             sname=self.name,
             sline1=self.line + 1,
             scolumn1=self.column + 1,
         )
-        return where
 
     def __eq__(self, other):
         # type: (Any) -> bool
         if self.line != other.line or self.column != other.column:
             return False
-        if self.name != other.name or self.index != other.index:
-            return False
-        return True
+        return self.name == other.name and self.index == other.index
 
     def __ne__(self, other):
         # type: (Any) -> bool
@@ -90,7 +82,7 @@ class StringMark(StreamMark):
                 break
         snippet = self.buffer[start:end]
         caret = '^'
-        caret = '^ (line: {})'.format(self.line + 1)
+        caret = f'^ (line: {self.line + 1})'
         return (
             ' ' * indent
             + head

@@ -163,10 +163,7 @@ class Markup(str):
         """
         rv = escape(s)
 
-        if rv.__class__ is not cls:
-            return cls(rv)
-
-        return rv
+        return cls(rv) if rv.__class__ is not cls else rv
 
     for method in (
         "__getitem__",
@@ -232,7 +229,7 @@ class EscapeFormatter(string.Formatter):
         else:
             # We need to make sure the format spec is str here as
             # otherwise the wrong callback methods are invoked.
-            rv = string.Formatter.format_field(self, value, str(format_spec))
+            rv = string.Formatter.format_field(self, value, format_spec)
         return str(self.escape(rv))
 
 

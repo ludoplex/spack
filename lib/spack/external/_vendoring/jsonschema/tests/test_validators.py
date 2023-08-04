@@ -579,9 +579,7 @@ class TestValidationErrorMessages(TestCase):
         )
         self.assertEqual(
             message,
-            "{} does not match any of the regexes: {}, {}".format(
-                repr(u"zebra"), repr(u"^abc$"), repr(u"^def$"),
-            ),
+            f'{repr("zebra")} does not match any of the regexes: {repr("^abc$")}, {repr("^def$")}',
         )
         message = self.message_for(
             instance={u"zebra": 123, u"fish": 456},
@@ -590,9 +588,7 @@ class TestValidationErrorMessages(TestCase):
         )
         self.assertEqual(
             message,
-            "{}, {} do not match any of the regexes: {}, {}".format(
-                repr(u"fish"), repr(u"zebra"), repr(u"^abc$"), repr(u"^def$")
-            ),
+            f'{repr("fish")}, {repr("zebra")} do not match any of the regexes: {repr("^abc$")}, {repr("^def$")}',
         )
 
     def test_False_schema(self):
@@ -1635,7 +1631,7 @@ class TestRefResolver(SynchronousTestCase):
             self.addCleanup(os.remove, tempf.name)
             json.dump({"foo": "bar"}, tempf)
 
-        ref = "file://{}#foo".format(pathname2url(tempf.name))
+        ref = f"file://{pathname2url(tempf.name)}#foo"
         with self.resolver.resolving(ref) as resolved:
             self.assertEqual(resolved, "bar")
 
@@ -1749,7 +1745,7 @@ class ReallyFakeRequests(object):
     def get(self, url):
         response = self._responses.get(url)
         if url is None:  # pragma: no cover
-            raise ValueError("Unknown URL: " + repr(url))
+            raise ValueError(f"Unknown URL: {repr(url)}")
         return _ReallyFakeJSONResponse(json.dumps(response))
 
 

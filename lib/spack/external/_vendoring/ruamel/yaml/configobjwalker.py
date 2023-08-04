@@ -4,9 +4,6 @@ import warnings
 
 from ruamel.yaml.util import configobj_walker as new_configobj_walker
 
-if False:  # MYPY
-    from typing import Any  # NOQA
-
 
 def configobj_walker(cfg):
     # type: (Any) -> Any

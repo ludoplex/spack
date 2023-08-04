@@ -42,10 +42,7 @@ class PSet(object):
         return len(self._map)
 
     def __repr__(self):
-        if not self:
-            return 'p' + str(set(self))
-
-        return 'pset([{0}])'.format(str(set(self))[1:-1])
+        return 'pset([{0}])'.format(str(set(self))[1:-1]) if self else f'p{set(self)}'
 
     def __str__(self):
         return self.__repr__()
@@ -59,7 +56,7 @@ class PSet(object):
 
     @classmethod
     def _from_iterable(cls, it, pre_size=8):
-        return PSet(pmap(dict((k, True) for k in it), pre_size=pre_size))
+        return PSet(pmap({k: True for k in it}, pre_size=pre_size))
 
     def add(self, element):
         """
@@ -96,7 +93,7 @@ class PSet(object):
         if element in self._map:
             return self.evolver().remove(element).persistent()
 
-        raise KeyError("Element '%s' not present in PSet" % repr(element))
+        raise KeyError(f"Element '{repr(element)}' not present in PSet")
 
     def discard(self, element):
         """

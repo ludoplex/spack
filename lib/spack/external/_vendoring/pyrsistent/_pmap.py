@@ -72,14 +72,7 @@ class PMap(object):
     @staticmethod
     def _contains(buckets, key):
         _, bucket = PMap._get_bucket(buckets, key)
-        if bucket:
-            for k, _ in bucket:
-                if k == key:
-                    return True
-
-            return False
-
-        return False
+        return any(k == key for k, _ in bucket) if bucket else False
 
     def __contains__(self, key):
         return self._contains(self._buckets, key)
@@ -111,8 +104,7 @@ class PMap(object):
     def iteritems(self):
         for bucket in self._buckets:
             if bucket:
-                for k, v in bucket:
-                    yield k, v
+                yield from bucket
 
     def values(self):
         return pvector(self.itervalues())
@@ -313,11 +305,9 @@ class PMap(object):
                 new_bucket = [kv]
                 new_bucket.extend(bucket)
                 self._buckets_evolver[index] = new_bucket
-                self._size += 1
             else:
                 self._buckets_evolver[index] = [kv]
-                self._size += 1
-
+            self._size += 1
             return self
 
         def _reallocate(self, new_size):
@@ -422,9 +412,7 @@ def _turbo_mapping(initial, pre_size):
     for k, v in initial.items():
         h = hash(k)
         index = h % size
-        bucket = buckets[index]
-
-        if bucket:
+        if bucket := buckets[index]:
             bucket.append((k, v))
         else:
             buckets[index] = [(k, v)]
