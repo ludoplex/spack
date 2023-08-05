@@ -10,10 +10,6 @@ from abc import abstractmethod
 import collections.abc
 
 
-# fmt: off
-if False:  # MYPY
-    from typing import Any, Dict, Optional, List, Union, BinaryIO, IO, Text, Tuple  # NOQA
-    from typing import Optional  # NOQA
 # fmt: on
 
 _DEFAULT_YAML_VERSION = (1, 2)
@@ -62,14 +58,6 @@ def _F(s, *superfluous, **kw):
 StringIO = io.StringIO
 BytesIO = io.BytesIO
 
-if False:  # MYPY
-    # StreamType = Union[BinaryIO, IO[str], IO[unicode],  StringIO]
-    # StreamType = Union[BinaryIO, IO[str], StringIO]  # type: ignore
-    StreamType = Any
-
-    StreamTextType = StreamType  # Union[Text, StreamType]
-    VersionType = Union[List[int], str, Tuple[int, int]]
-
 builtins_module = 'builtins'
 
 
@@ -87,10 +75,7 @@ DBG_NODE = 4
 _debug = None  # type: Optional[int]
 if 'RUAMELDEBUG' in os.environ:
     _debugx = os.environ.get('RUAMELDEBUG')
-    if _debugx is None:
-        _debug = 0
-    else:
-        _debug = int(_debugx)
+    _debug = 0 if _debugx is None else int(_debugx)
 
 
 if bool(_debug):
@@ -107,7 +92,7 @@ if bool(_debug):
         def dump(self):
             # type: () -> None
             for k in sorted(self.map):
-                sys.stdout.write('{} -> {}'.format(k, self.map[k]))
+                sys.stdout.write(f'{k} -> {self.map[k]}')
 
     object_counter = ObjectCounter()
 
@@ -119,13 +104,8 @@ def dbg(val=None):
     if _debug is None:
         # set to true or false
         _debugx = os.environ.get('YAMLDEBUG')
-        if _debugx is None:
-            _debug = 0
-        else:
-            _debug = int(_debugx)
-    if val is None:
-        return _debug
-    return _debug & val
+        _debug = 0 if _debugx is None else int(_debugx)
+    return _debug if val is None else _debug & val
 
 
 class Nprint:
@@ -163,9 +143,7 @@ class Nprint:
         self._count = None
 
     def fp(self, mode='a'):
-        # type: (str) -> Any
-        out = sys.stdout if self._file_name is None else open(self._file_name, mode)
-        return out
+        return sys.stdout if self._file_name is None else open(self._file_name, mode)
 
 
 nprint = Nprint()
@@ -182,16 +160,12 @@ def check_namespace_char(ch):
         return True
     if ('\uE000' <= ch <= '\uFFFD') and ch != '\uFEFF':  # excl. byte order mark
         return True
-    if '\U00010000' <= ch <= '\U0010FFFF':
-        return True
-    return False
+    return '\U00010000' <= ch <= '\U0010FFFF'
 
 
 def check_anchorname_char(ch):
     # type: (Any) -> bool
-    if ch in ',[]{}':
-        return False
-    return check_namespace_char(ch)
+    return False if ch in ',[]{}' else check_namespace_char(ch)
 
 
 def version_tnf(t1, t2=None):
@@ -203,9 +177,7 @@ def version_tnf(t1, t2=None):
 
     if version_info < t1:
         return True
-    if t2 is not None and version_info < t2:
-        return None
-    return False
+    return None if t2 is not None and version_info < t2 else False
 
 
 class MutableSliceableSequence(collections.abc.MutableSequence):  # type: ignore
@@ -233,13 +205,11 @@ class MutableSliceableSequence(collections.abc.MutableSequence):  # type: ignore
             # need to test before changing, in case TypeError is caught
             if nr_assigned_items < len(value):
                 raise TypeError(
-                    'too many elements in value {} < {}'.format(nr_assigned_items, len(value))
+                    f'too many elements in value {nr_assigned_items} < {len(value)}'
                 )
             elif nr_assigned_items > len(value):
                 raise TypeError(
-                    'not enough elements in value {} > {}'.format(
-                        nr_assigned_items, len(value)
-                    )
+                    f'not enough elements in value {nr_assigned_items} > {len(value)}'
                 )
             for idx, i in enumerate(range(*range_parms)):
                 self[i] = value[idx]

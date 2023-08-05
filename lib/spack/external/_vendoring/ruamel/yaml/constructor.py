@@ -33,15 +33,8 @@ from ruamel.yaml.scalarbool import ScalarBoolean
 from ruamel.yaml.timestamp import TimeStamp
 from ruamel.yaml.util import timestamp_regexp, create_timestamp
 
-if False:  # MYPY
-    from typing import Any, Dict, List, Set, Generator, Union, Optional  # NOQA
-
-
 __all__ = ['BaseConstructor', 'SafeConstructor', 'Constructor',
            'ConstructorError', 'RoundTripConstructor']
-# fmt: on
-
-
 class ConstructorError(MarkedYAMLError):
     pass
 
@@ -82,9 +75,9 @@ class BaseConstructor:
         try:
             return self.loader._composer
         except AttributeError:
-            sys.stdout.write('slt {}\n'.format(type(self)))
-            sys.stdout.write('slc {}\n'.format(self.loader._composer))
-            sys.stdout.write('{}\n'.format(dir(self)))
+            sys.stdout.write(f'slt {type(self)}\n')
+            sys.stdout.write(f'slc {self.loader._composer}\n')
+            sys.stdout.write(f'{dir(self)}\n')
             raise
 
     @property
@@ -117,9 +110,7 @@ class BaseConstructor:
         # type: () -> Any
         # Ensure that the stream contains a single document and construct it.
         node = self.composer.get_single_node()
-        if node is not None:
-            return self.construct_document(node)
-        return None
+        return self.construct_document(node) if node is not None else None
 
     def construct_document(self, node):
         # type: (Any) -> Any
@@ -127,9 +118,6 @@ class BaseConstructor:
         while bool(self.state_generators):
             state_generators = self.state_generators
             self.state_generators = []
-            for generator in state_generators:
-                for _dummy in generator:
-                    pass
         self.constructed_objects = {}
         self.recursive_objects = {}
         self.deep_construct = False
@@ -192,10 +180,7 @@ class BaseConstructor:
         if isinstance(data, types.GeneratorType):
             generator = data
             data = next(generator)
-            if self.deep_construct:
-                for _dummy in generator:
-                    pass
-            else:
+            if not self.deep_construct:
                 self.state_generators.append(generator)
         return data
 
@@ -276,8 +261,7 @@ class BaseConstructor:
                 args = [
                     'while constructing a mapping',
                     node.start_mark,
-                    'found duplicate key "{}" with value "{}" '
-                    '(original value: "{}")'.format(key, value, mk),
+                    f'found duplicate key "{key}" with value "{value}" (original value: "{mk}")',
                     key_node.start_mark,
                     """
                     To suppress this check see:
@@ -302,7 +286,7 @@ class BaseConstructor:
                 args = [
                     'while constructing a set',
                     node.start_mark,
-                    'found duplicate key "{}"'.format(key),
+                    f'found duplicate key "{key}"',
                     key_node.start_mark,
                     """
                     To suppress this check see:
@@ -378,7 +362,7 @@ class SafeConstructor(BaseConstructor):
                     args = [
                         'while constructing a mapping',
                         node.start_mark,
-                        'found duplicate key "{}"'.format(key_node.value),
+                        f'found duplicate key "{key_node.value}"',
                         key_node.start_mark,
                         """
                         To suppress this check see:
@@ -470,9 +454,7 @@ class SafeConstructor(BaseConstructor):
         # type: (Any) -> int
         value_s = self.construct_scalar(node)
         value_s = value_s.replace('_', "")
-        sign = +1
-        if value_s[0] == '-':
-            sign = -1
+        sign = -1 if value_s[0] == '-' else +1
         if value_s[0] in '+-':
             value_s = value_s[1:]
         if value_s == '0':
@@ -506,9 +488,7 @@ class SafeConstructor(BaseConstructor):
         # type: (Any) -> float
         value_so = self.construct_scalar(node)
         value_s = value_so.replace('_', "").lower()
-        sign = +1
-        if value_s[0] == '-':
-            sign = -1
+        sign = -1 if value_s[0] == '-' else +1
         if value_s[0] in '+-':
             value_s = value_s[1:]
         if value_s == '.inf':
@@ -566,7 +546,7 @@ class SafeConstructor(BaseConstructor):
                 raise ConstructorError(
                     None,
                     None,
-                    'failed to construct timestamp from "{}"'.format(node.value),
+                    f'failed to construct timestamp from "{node.value}"',
                     node.start_mark,
                 )
             values = match.groupdict()
@@ -657,9 +637,7 @@ class SafeConstructor(BaseConstructor):
         data.update(value)
 
     def construct_yaml_str(self, node):
-        # type: (Any) -> Any
-        value = self.construct_scalar(node)
-        return value
+        return self.construct_scalar(node)
 
     def construct_yaml_seq(self, node):
         # type: (Any) -> Any
@@ -763,9 +741,7 @@ class Constructor(SafeConstructor):
             )
 
     def construct_python_long(self, node):
-        # type: (Any) -> int
-        val = self.construct_yaml_int(node)
-        return val
+        return self.construct_yaml_int(node)
 
     def construct_python_complex(self, node):
         # type: (Any) -> Any
@@ -853,9 +829,7 @@ class Constructor(SafeConstructor):
         return obj
 
     def construct_python_name(self, suffix, node):
-        # type: (Any, Any) -> Any
-        value = self.construct_scalar(node)
-        if value:
+        if value := self.construct_scalar(node):
             raise ConstructorError(
                 'while constructing a Python name',
                 node.start_mark,
@@ -865,9 +839,7 @@ class Constructor(SafeConstructor):
         return self.find_python_name(suffix, node.start_mark)
 
     def construct_python_module(self, suffix, node):
-        # type: (Any, Any) -> Any
-        value = self.construct_scalar(node)
-        if value:
+        if value := self.construct_scalar(node):
             raise ConstructorError(
                 'while constructing a Python module',
                 node.start_mark,
@@ -1047,12 +1019,10 @@ class RoundTripConstructor(SafeConstructor):
             if self.loader and self.loader.comment_handling is None:
                 if node.comment and node.comment[1]:
                     lss.comment = node.comment[1][0]  # type: ignore
-            else:
-                # NEWCMNT
-                if node.comment is not None and node.comment[1]:
-                    # nprintf('>>>>nc1', node.comment)
-                    # EOL comment after |
-                    lss.comment = self.comment(node.comment[1][0])  # type: ignore
+            elif node.comment is not None and node.comment[1]:
+                # nprintf('>>>>nc1', node.comment)
+                # EOL comment after |
+                lss.comment = self.comment(node.comment[1][0])  # type: ignore
             return lss
         if node.style == '>' and isinstance(node.value, str):
             fold_positions = []  # type: List[int]
@@ -1066,12 +1036,10 @@ class RoundTripConstructor(SafeConstructor):
             if self.loader and self.loader.comment_handling is None:
                 if node.comment and node.comment[1]:
                     fss.comment = node.comment[1][0]  # type: ignore
-            else:
-                # NEWCMNT
-                if node.comment is not None and node.comment[1]:
-                    # nprintf('>>>>nc2', node.comment)
-                    # EOL comment after >
-                    fss.comment = self.comment(node.comment[1][0])  # type: ignore
+            elif node.comment is not None and node.comment[1]:
+                # nprintf('>>>>nc2', node.comment)
+                # EOL comment after >
+                fss.comment = self.comment(node.comment[1][0])  # type: ignore
             if fold_positions:
                 fss.fold_pos = fold_positions  # type: ignore
             return fss
@@ -1091,14 +1059,10 @@ class RoundTripConstructor(SafeConstructor):
         try:
             sx = value_su.rstrip('_')
             underscore = [len(sx) - sx.rindex('_') - 1, False, False]  # type: Any
-        except ValueError:
-            underscore = None
-        except IndexError:
+        except (ValueError, IndexError):
             underscore = None
         value_s = value_su.replace('_', "")
-        sign = +1
-        if value_s[0] == '-':
-            sign = -1
+        sign = -1 if value_s[0] == '-' else +1
         if value_s[0] in '+-':
             value_s = value_s[1:]
         if value_s == '0':
@@ -1253,11 +1217,7 @@ class RoundTripConstructor(SafeConstructor):
         )
 
     def construct_yaml_str(self, node):
-        # type: (Any) -> Any
-        value = self.construct_scalar(node)
-        if isinstance(value, ScalarString):
-            return value
-        return value
+        return self.construct_scalar(node)
 
     def construct_rt_sequence(self, node, seqtyp, deep=False):
         # type: (Any, Any, bool) -> Any
@@ -1269,17 +1229,15 @@ class RoundTripConstructor(SafeConstructor):
                 node.start_mark,
             )
         ret_val = []
-        if self.loader and self.loader.comment_handling is None:
-            if node.comment:
+        if node.comment:
+            if self.loader and self.loader.comment_handling is None:
                 seqtyp._yaml_add_comment(node.comment[:2])
                 if len(node.comment) > 2:
                     # this happens e.g. if you have a sequence element that is a flow-style
                     # mapping and that has no EOL comment but a following commentline or
                     # empty line
                     seqtyp.yaml_end_comment_extend(node.comment[2], clear=True)
-        else:
-            # NEWCMNT
-            if node.comment:
+            else:
                 nprintf('nc3', node.comment)
         if node.anchor:
             from ruamel.yaml.serializer import templated_id
@@ -1403,20 +1361,17 @@ class RoundTripConstructor(SafeConstructor):
                 node.start_mark,
             )
         merge_map = self.flatten_mapping(node)
-        # mapping = {}
         if self.loader and self.loader.comment_handling is None:
             if node.comment:
                 maptyp._yaml_add_comment(node.comment[:2])
                 if len(node.comment) > 2:
                     maptyp.yaml_end_comment_extend(node.comment[2], clear=True)
-        else:
-            # NEWCMNT
-            if node.comment:
-                # nprintf('nc4', node.comment, node.start_mark)
-                if maptyp.ca.pre is None:
-                    maptyp.ca.pre = []
-                for cmnt in self.comments(node.comment, 0):
-                    maptyp.ca.pre.append(cmnt)
+        elif node.comment:
+            # nprintf('nc4', node.comment, node.start_mark)
+            if maptyp.ca.pre is None:
+                maptyp.ca.pre = []
+            for cmnt in self.comments(node.comment, 0):
+                maptyp.ca.pre.append(cmnt)
         if node.anchor:
             from ruamel.yaml.serializer import templated_id
 
@@ -1507,14 +1462,12 @@ class RoundTripConstructor(SafeConstructor):
                 _F('expected a mapping node, but found {node_id!s}', node_id=node.id),
                 node.start_mark,
             )
-        if self.loader and self.loader.comment_handling is None:
-            if node.comment:
+        if node.comment:
+            if self.loader and self.loader.comment_handling is None:
                 typ._yaml_add_comment(node.comment[:2])
                 if len(node.comment) > 2:
                     typ.yaml_end_comment_extend(node.comment[2], clear=True)
-        else:
-            # NEWCMNT
-            if node.comment:
+            else:
                 nprintf('nc6', node.comment)
         if node.anchor:
             from ruamel.yaml.serializer import templated_id
@@ -1613,14 +1566,12 @@ class RoundTripConstructor(SafeConstructor):
         elif node.flow_style is False:
             omap.fa.set_block_style()
         yield omap
-        if self.loader and self.loader.comment_handling is None:
-            if node.comment:
+        if node.comment:
+            if self.loader and self.loader.comment_handling is None:
                 omap._yaml_add_comment(node.comment[:2])
                 if len(node.comment) > 2:
                     omap.yaml_end_comment_extend(node.comment[2], clear=True)
-        else:
-            # NEWCMNT
-            if node.comment:
+            else:
                 nprintf('nc8', node.comment)
         if not isinstance(node, SequenceNode):
             raise ConstructorError(
@@ -1746,7 +1697,7 @@ class RoundTripConstructor(SafeConstructor):
             raise ConstructorError(
                 None,
                 None,
-                'failed to construct timestamp from "{}"'.format(node.value),
+                f'failed to construct timestamp from "{node.value}"',
                 node.start_mark,
             )
         values = match.groupdict()
@@ -1778,9 +1729,8 @@ class RoundTripConstructor(SafeConstructor):
             if values['tz_minute']:
                 tz += ':' + values['tz_minute']
             data._yaml['tz'] = tz
-        else:
-            if values['tz']:  # no delta
-                data._yaml['tz'] = values['tz']
+        elif values['tz']:  # no delta
+            data._yaml['tz'] = values['tz']
 
         if values['t']:
             data._yaml['t'] = True
@@ -1789,9 +1739,7 @@ class RoundTripConstructor(SafeConstructor):
     def construct_yaml_bool(self, node):
         # type: (Any) -> Any
         b = SafeConstructor.construct_yaml_bool(self, node)
-        if node.anchor:
-            return ScalarBoolean(b, anchor=node.anchor)
-        return b
+        return ScalarBoolean(b, anchor=node.anchor) if node.anchor else b
 
 
 RoundTripConstructor.add_constructor(

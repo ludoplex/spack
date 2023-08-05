@@ -40,6 +40,4 @@ def dylib_info(filename):
     if not present.
     """
     is_dylib = _DYLIB_RE.match(filename)
-    if not is_dylib:
-        return None
-    return is_dylib.groupdict()
+    return None if not is_dylib else is_dylib.groupdict()

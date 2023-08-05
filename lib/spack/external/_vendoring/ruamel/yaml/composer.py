@@ -17,9 +17,6 @@ from ruamel.yaml.events import (
 )
 from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
-if False:  # MYPY
-    from typing import Any, Dict, Optional, List  # NOQA
-
 __all__ = ['Composer', 'ComposerError']
 
 
@@ -188,8 +185,7 @@ class Composer:
         if node.flow_style is True and end_event.comment is not None:
             if node.comment is not None:
                 nprint(
-                    'Warning: unexpected end_event commment in sequence '
-                    'node {}'.format(node.flow_style)
+                    f'Warning: unexpected end_event commment in sequence node {node.flow_style}'
                 )
             node.comment = end_event.comment
         node.end_mark = end_event.end_mark

@@ -10,17 +10,17 @@ def _is_pclass(bases):
 
 
 class PClassMeta(type):
-    def __new__(mcs, name, bases, dct):
+    def __new__(cls, name, bases, dct):
         set_fields(dct, bases, name='_pclass_fields')
         store_invariants(dct, bases, '_pclass_invariants', '__invariant__')
-        dct['__slots__'] = ('_pclass_frozen',) + tuple(key for key in dct['_pclass_fields'])
+        dct['__slots__'] = ('_pclass_frozen',) + tuple(dct['_pclass_fields'])
 
         # There must only be one __weakref__ entry in the inheritance hierarchy,
         # lets put it on the top level class.
         if _is_pclass(bases):
             dct['__slots__'] += ('__weakref__',)
 
-        return super(PClassMeta, mcs).__new__(mcs, name, bases, dct)
+        return super(PClassMeta, cls).__new__(cls, name, bases, dct)
 
 _MISSING_VALUE = object()
 
@@ -152,12 +152,11 @@ class PClass(CheckedType, metaclass=PClassMeta):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            for name in self._pclass_fields:
-                if getattr(self, name, _MISSING_VALUE) != getattr(other, name, _MISSING_VALUE):
-                    return False
-
-            return True
-
+            return all(
+                getattr(self, name, _MISSING_VALUE)
+                == getattr(other, name, _MISSING_VALUE)
+                for name in self._pclass_fields
+            )
         return NotImplemented
 
     def __ne__(self, other):
@@ -191,7 +190,11 @@ class PClass(CheckedType, metaclass=PClassMeta):
 
     def __reduce__(self):
         # Pickling support
-        data = dict((key, getattr(self, key)) for key in self._pclass_fields if hasattr(self, key))
+        data = {
+            key: getattr(self, key)
+            for key in self._pclass_fields
+            if hasattr(self, key)
+        }
         return _restore_pickle, (self.__class__, data,)
 
     def evolver(self):

@@ -39,10 +39,7 @@ def freeze(o, strict=True):
     if typ is tuple:
         curried_freeze = lambda x: freeze(x, strict)
         return tuple(map(curried_freeze, o))
-    if typ is set:
-        # impossible to have anything that needs freezing inside a set or pset
-        return pset(o)
-    return o
+    return pset(o) if typ is set else o
 
 
 def thaw(o, strict=True):
@@ -76,10 +73,7 @@ def thaw(o, strict=True):
     if typ is tuple:
         curried_thaw = lambda x: thaw(x, strict)
         return tuple(map(curried_thaw, o))
-    if isinstance(o, PSet):
-        # impossible to thaw inside psets or sets
-        return set(o)
-    return o
+    return set(o) if isinstance(o, PSet) else o
 
 
 def mutant(fn):

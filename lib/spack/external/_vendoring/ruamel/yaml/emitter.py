@@ -14,12 +14,6 @@ from ruamel.yaml.events import *  # NOQA
 # fmt: off
 from ruamel.yaml.compat import _F, nprint, dbg, DBG_EVENT, \
     check_anchorname_char, nprintf  # NOQA
-# fmt: on
-
-if False:  # MYPY
-    from typing import Any, Dict, List, Union, Text, Tuple, Optional  # NOQA
-    from ruamel.yaml.compat import StreamType  # NOQA
-
 __all__ = ['Emitter', 'EmitterError']
 
 
@@ -81,11 +75,7 @@ class Indents:
             if len(self.values) == 0 or not pre_comment:
                 return 0
         base = self.values[-1][0] if self.values[-1][0] is not None else 0
-        if pre_comment:
-            return base + seq_indent  # type: ignore
-            # return (len(self.values)) * seq_indent
-        # -1 for the dash
-        return base + seq_indent - column - 1  # type: ignore
+        return base + seq_indent if pre_comment else base + seq_indent - column - 1
 
     def __len__(self):
         # type: () -> int
@@ -292,13 +282,7 @@ class Emitter:
         # type: (bool, Optional[bool], bool) -> None
         self.indents.append(self.indent, sequence)
         if self.indent is None:  # top level
-            if flow:
-                # self.indent = self.best_sequence_indent if self.indents.last_seq() else \
-                #              self.best_map_indent
-                # self.indent = self.best_sequence_indent
-                self.indent = self.requested_indent
-            else:
-                self.indent = 0
+            self.indent = self.requested_indent if flow else 0
         elif not indentless:
             self.indent += (
                 self.best_sequence_indent if self.indents.last_seq() else self.best_map_indent
@@ -316,16 +300,14 @@ class Emitter:
     # Stream handlers.
 
     def expect_stream_start(self):
-        # type: () -> None
-        if isinstance(self.event, StreamStartEvent):
-            if self.event.encoding and not hasattr(self.stream, 'encoding'):
-                self.encoding = self.event.encoding
-            self.write_stream_start()
-            self.state = self.expect_first_document_start
-        else:
+        if not isinstance(self.event, StreamStartEvent):
             raise EmitterError(
                 _F('expected StreamStartEvent, but got {self_event!s}', self_event=self.event)
             )
+        if self.event.encoding and not hasattr(self.stream, 'encoding'):
+            self.encoding = self.event.encoding
+        self.write_stream_start()
+        self.state = self.expect_first_document_start
 
     def expect_nothing(self):
         # type: () -> None
@@ -386,18 +368,16 @@ class Emitter:
             )
 
     def expect_document_end(self):
-        # type: () -> None
-        if isinstance(self.event, DocumentEndEvent):
-            self.write_indent()
-            if self.event.explicit:
-                self.write_indicator('...', True)
-                self.write_indent()
-            self.flush_stream()
-            self.state = self.expect_document_start
-        else:
+        if not isinstance(self.event, DocumentEndEvent):
             raise EmitterError(
                 _F('expected DocumentEndEvent, but got {self_event!s}', self_event=self.event)
             )
+        self.write_indent()
+        if self.event.explicit:
+            self.write_indicator('...', True)
+            self.write_indent()
+        self.flush_stream()
+        self.state = self.expect_document_start
 
     def expect_document_root(self):
         # type: () -> None
@@ -662,17 +642,15 @@ class Emitter:
         return self.expect_block_sequence_item(first=True)
 
     def expect_block_sequence_item(self, first=False):
+        if self.event.comment and self.event.comment[1]:
+            # final comments on a block list e.g. empty line
+            self.write_pre_comment(self.event)
         # type: (bool) -> None
         if not first and isinstance(self.event, SequenceEndEvent):
-            if self.event.comment and self.event.comment[1]:
-                # final comments on a block list e.g. empty line
-                self.write_pre_comment(self.event)
             self.indent = self.indents.pop()
             self.state = self.states.pop()
             self.no_newline = False
         else:
-            if self.event.comment and self.event.comment[1]:
-                self.write_pre_comment(self.event)
             nonl = self.no_newline if self.column == 0 else False
             self.write_indent()
             ind = self.sequence_dash_offset  # if  len(self.indents) > 1 else 0
@@ -686,7 +664,11 @@ class Emitter:
 
     def expect_block_mapping(self):
         # type: () -> None
-        if not self.mapping_context and not (self.compact_seq_map or self.column == 0):
+        if (
+            not self.mapping_context
+            and not self.compact_seq_map
+            and self.column != 0
+        ):
             self.write_line_break()
         self.increase_indent(flow=False, sequence=False)
         self.state = self.expect_first_block_mapping_key
@@ -696,17 +678,14 @@ class Emitter:
         return self.expect_block_mapping_key(first=True)
 
     def expect_block_mapping_key(self, first=False):
+        if self.event.comment and self.event.comment[1]:
+            # final comments from a doc
+            self.write_pre_comment(self.event)
         # type: (Any) -> None
         if not first and isinstance(self.event, MappingEndEvent):
-            if self.event.comment and self.event.comment[1]:
-                # final comments from a doc
-                self.write_pre_comment(self.event)
             self.indent = self.indents.pop()
             self.state = self.states.pop()
         else:
-            if self.event.comment and self.event.comment[1]:
-                # final comments from a doc
-                self.write_pre_comment(self.event)
             self.write_indent()
             if self.check_simple_key():
                 if not isinstance(
@@ -720,7 +699,7 @@ class Emitter:
                 self.states.append(self.expect_block_mapping_simple_value)
                 self.expect_node(mapping=True, simple_key=True)
                 # test on style for alias in !!set
-                if isinstance(self.event, AliasEvent) and not self.event.style == '?':
+                if isinstance(self.event, AliasEvent) and self.event.style != '?':
                     self.stream.write(' ')
             else:
                 self.write_indicator('?', True, indention=True)
@@ -850,10 +829,9 @@ class Emitter:
             if self.event.implicit[0] and tag is None:
                 tag = '!'
                 self.prepared_tag = None
-        else:
-            if (not self.canonical or tag is None) and self.event.implicit:
-                self.prepared_tag = None
-                return
+        elif (not self.canonical or tag is None) and self.event.implicit:
+            self.prepared_tag = None
+            return
         if tag is None:
             raise EmitterError('tag is not specified')
         if self.prepared_tag is None:
@@ -886,12 +864,12 @@ class Emitter:
             ):
                 return ""
         self.analysis.allow_block = True
-        if self.event.style and self.event.style in '|>':
-            if (
+        if (
                 not self.flow_level
                 and not self.simple_key_context
                 and self.analysis.allow_block
             ):
+            if self.event.style and self.event.style in '|>':
                 return self.event.style
         if not self.event.style and self.analysis.allow_double_quoted:
             if "'" in self.event.value or '\n' in self.event.value:
@@ -1002,8 +980,7 @@ class Emitter:
                     chunks.append(prefix[start:end])
                 start = end = end + 1
                 data = ch
-                for ch in data:
-                    chunks.append(_F('%{ord_ch:02X}', ord_ch=ord(ch)))
+                chunks.extend(_F('%{ord_ch:02X}', ord_ch=ord(data)) for data in data)
         if start < end:
             chunks.append(prefix[start:end])
         return "".join(chunks)
@@ -1043,8 +1020,7 @@ class Emitter:
                     chunks.append(suffix[start:end])
                 start = end = end + 1
                 data = ch
-                for ch in data:
-                    chunks.append(_F('%{ord_ch:02X}', ord_ch=ord(ch)))
+                chunks.extend(_F('%{ord_ch:02X}', ord_ch=ord(data)) for data in data)
         if start < end:
             chunks.append(suffix[start:end])
         suffix_text = "".join(chunks)

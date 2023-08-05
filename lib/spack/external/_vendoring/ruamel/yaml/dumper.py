@@ -10,10 +10,6 @@ from ruamel.yaml.representer import (
 )
 from ruamel.yaml.resolver import Resolver, BaseResolver, VersionedResolver
 
-if False:  # MYPY
-    from typing import Any, Dict, List, Union, Optional  # NOQA
-    from ruamel.yaml.compat import StreamType, VersionType  # NOQA
-
 __all__ = ['BaseDumper', 'SafeDumper', 'Dumper', 'RoundTripDumper']
 
 

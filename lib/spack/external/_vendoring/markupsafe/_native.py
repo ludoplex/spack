@@ -37,10 +37,7 @@ def escape_silent(s: t.Optional[t.Any]) -> Markup:
     >>> escape_silent(None)
     Markup('')
     """
-    if s is None:
-        return Markup()
-
-    return escape(s)
+    return Markup() if s is None else escape(s)
 
 
 def soft_str(s: t.Any) -> str:
@@ -57,10 +54,7 @@ def soft_str(s: t.Any) -> str:
     >>> escape(soft_str(value))
     Markup('&lt;User 1&gt;')
     """
-    if not isinstance(s, str):
-        return str(s)
-
-    return s
+    return str(s) if not isinstance(s, str) else s
 
 
 def soft_unicode(s: t.Any) -> str:

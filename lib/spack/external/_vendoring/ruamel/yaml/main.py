@@ -33,11 +33,6 @@ from ruamel.yaml.constructor import (
 from ruamel.yaml.loader import Loader as UnsafeLoader
 from ruamel.yaml.comments import CommentedMap, CommentedSeq, C_PRE
 
-if False:  # MYPY
-    from typing import List, Set, Dict, Union, Any, Callable, Optional, Text  # NOQA
-    from ruamel.yaml.compat import StreamType, StreamTextType, VersionType  # NOQA
-    from pathlib import Path
-
 try:
     from _ruamel_yaml import CParser, CEmitter  # type: ignore
 except:  # NOQA
@@ -51,7 +46,7 @@ except:  # NOQA
 
 
 class YAML:
-    def __init__(self, *, typ=None, pure=False, output=None, plug_ins=None):  # input=None,
+    def __init__(self, *, typ=None, pure=False, output=None, plug_ins=None):    # input=None,
         # type: (Any, Optional[Text], Any, Any, Any) -> None
         """
         typ: 'rt'/None -> RoundTripLoader/RoundTripDumper,  (default)
@@ -171,7 +166,7 @@ class YAML:
                 break
         if typ_found == 0:
             raise NotImplementedError(
-                'typ "{}"not recognised (need to install plug-in?)'.format(self.typ)
+                f'typ "{self.typ}"not recognised (need to install plug-in?)'
             )
 
     @property
@@ -195,29 +190,28 @@ class YAML:
     @property
     def parser(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
             if self.Parser is not CParser:
                 setattr(self, attr, self.Parser(loader=self))
+            elif getattr(self, '_stream', None) is None:
+                # wait for the stream
+                return None
             else:
-                if getattr(self, '_stream', None) is None:
-                    # wait for the stream
-                    return None
-                else:
-                    # if not hasattr(self._stream, 'read') and hasattr(self._stream, 'open'):
-                    #     # pathlib.Path() instance
-                    #     setattr(self, attr, CParser(self._stream))
-                    # else:
-                    setattr(self, attr, CParser(self._stream))
-                    # self._parser = self._composer = self
-                    # nprint('scanner', self.loader.scanner)
+                # if not hasattr(self._stream, 'read') and hasattr(self._stream, 'open'):
+                #     # pathlib.Path() instance
+                #     setattr(self, attr, CParser(self._stream))
+                # else:
+                setattr(self, attr, CParser(self._stream))
+                # self._parser = self._composer = self
+                # nprint('scanner', self.loader.scanner)
 
         return getattr(self, attr)
 
     @property
     def composer(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
             setattr(self, attr, self.Composer(loader=self))
         return getattr(self, attr)
@@ -225,7 +219,7 @@ class YAML:
     @property
     def constructor(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
             cnst = self.Constructor(preserve_quotes=self.preserve_quotes, loader=self)
             cnst.allow_duplicate_keys = self.allow_duplicate_keys
@@ -235,7 +229,7 @@ class YAML:
     @property
     def resolver(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
             setattr(self, attr, self.Resolver(version=self.version, loader=self))
         return getattr(self, attr)
@@ -243,43 +237,40 @@ class YAML:
     @property
     def emitter(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
-            if self.Emitter is not CEmitter:
-                _emitter = self.Emitter(
-                    None,
-                    canonical=self.canonical,
-                    indent=self.old_indent,
-                    width=self.width,
-                    allow_unicode=self.allow_unicode,
-                    line_break=self.line_break,
-                    prefix_colon=self.prefix_colon,
-                    brace_single_entry_mapping_in_flow_sequence=self.brace_single_entry_mapping_in_flow_sequence,  # NOQA
-                    dumper=self,
-                )
-                setattr(self, attr, _emitter)
-                if self.map_indent is not None:
-                    _emitter.best_map_indent = self.map_indent
-                if self.sequence_indent is not None:
-                    _emitter.best_sequence_indent = self.sequence_indent
-                if self.sequence_dash_offset is not None:
-                    _emitter.sequence_dash_offset = self.sequence_dash_offset
-                    # _emitter.block_seq_indent = self.sequence_dash_offset
-                if self.compact_seq_seq is not None:
-                    _emitter.compact_seq_seq = self.compact_seq_seq
-                if self.compact_seq_map is not None:
-                    _emitter.compact_seq_map = self.compact_seq_map
-            else:
-                if getattr(self, '_stream', None) is None:
-                    # wait for the stream
-                    return None
+            if self.Emitter is CEmitter:
+                # wait for the stream
                 return None
+            _emitter = self.Emitter(
+                None,
+                canonical=self.canonical,
+                indent=self.old_indent,
+                width=self.width,
+                allow_unicode=self.allow_unicode,
+                line_break=self.line_break,
+                prefix_colon=self.prefix_colon,
+                brace_single_entry_mapping_in_flow_sequence=self.brace_single_entry_mapping_in_flow_sequence,  # NOQA
+                dumper=self,
+            )
+            setattr(self, attr, _emitter)
+            if self.map_indent is not None:
+                _emitter.best_map_indent = self.map_indent
+            if self.sequence_indent is not None:
+                _emitter.best_sequence_indent = self.sequence_indent
+            if self.sequence_dash_offset is not None:
+                _emitter.sequence_dash_offset = self.sequence_dash_offset
+                # _emitter.block_seq_indent = self.sequence_dash_offset
+            if self.compact_seq_seq is not None:
+                _emitter.compact_seq_seq = self.compact_seq_seq
+            if self.compact_seq_map is not None:
+                _emitter.compact_seq_map = self.compact_seq_map
         return getattr(self, attr)
 
     @property
     def serializer(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
             setattr(
                 self,
@@ -298,7 +289,7 @@ class YAML:
     @property
     def representer(self):
         # type: () -> Any
-        attr = '_' + sys._getframe().f_code.co_name
+        attr = f'_{sys._getframe().f_code.co_name}'
         if not hasattr(self, attr):
             repres = self.Representer(
                 default_style=self.default_style,
